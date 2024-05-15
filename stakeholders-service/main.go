@@ -2,35 +2,36 @@ package main
 
 import (
 	"log"
-	"net/http"
-	"stakeholders-service/controller"
+	"net"
+	"stakeholders-service/server"
 	"stakeholders-service/service"
 
-	"github.com/gorilla/mux"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
-func startServer(tokenController *controller.JWTController) {
-	router := mux.NewRouter().StrictSlash(true)
+func startServer(JwtService *service.JWTService) {
+	grpcServer := grpc.NewServer()
 
-	//TOURS
-	//router.HandleFunc("/tours/{id}", controller.Get).Methods("GET")
-	router.HandleFunc("/token", tokenController.GenerateAccsessToken).Methods("POST")
+	reflection.Register(grpcServer)
 
-	println("Server starting")
-	log.Fatal(http.ListenAndServe(":8082", router))
-		
+	server.RegisterStakeholdersMicroserviceServer(grpcServer, &server.StakeholdersMicroservice{
+		JwtService: JwtService,
+	})
+
+	listener, err := net.Listen("tcp", ":8082")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	log.Println("gRPC server listening on port :8082")
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatalf("Failed to serve gRPC server: %v", err)
+	}
 }
 
 func main() {
-
-
-	//equipment
-	
 	jwtService := &service.JWTService{}
-	jwtController := &controller.JWTController{JwtService: jwtService}
 
-	
-
-	startServer(jwtController)
+	startServer(jwtService)
 }
-
